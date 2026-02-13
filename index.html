@@ -311,8 +311,10 @@
         setAchievements(prev=>{if(prev.includes(id))return prev; const a=ACHIEVEMENTS.find(x=>x.id===id); if(a) setTimeout(()=>notify(a.icon+" "+a.name+" unlocked!"),300); return [...prev,id];});
       },[notify]);
 
-      // Load save
-      useEffect(()=>{(async()=>{try{const r=await store.get("cg3");if(r&&r.value){const d=JSON.parse(r.value);
+      // Load save — with minimum display time for loading animation
+      useEffect(()=>{(async()=>{
+        const minDelay = new Promise(r=>setTimeout(r, 2500));
+        try{const r=await store.get("cg3");if(r&&r.value){const d=JSON.parse(r.value);
         if(d.stats)setStats(d.stats);if(d.chonkId!=null)setChonkId(d.chonkId);if(d.chonkImg)setChonkImg(d.chonkImg);
         if(d.chonkName)setChonkName(d.chonkName);if(d.age!=null)setAge(d.age);if(d.fed!=null)setFed(d.fed);
         if(d.played!=null)setPlayed(d.played);if(d.hiStar!=null)setHiStar(d.hiStar);if(d.hiMem!=null)setHiMem(d.hiMem);
@@ -320,7 +322,10 @@
         if(d.lastSave){const h=(Date.now()-d.lastSave)/3600000,dc=Math.min(h*3,40);
           setStats(p=>({hunger:clamp(p.hunger-dc),happiness:clamp(p.happiness-dc*.7),energy:clamp(p.energy+(d.stats?.energy<50?h*5:-dc*.3))}));}
         setScreen("game");
-      }}catch(e){}setLoaded(true);})();},[]);
+      }}catch(e){}
+        await minDelay;
+        setLoaded(true);
+      })();},[]);
 
       // Save
       useEffect(()=>{if(!loaded)return;const save=async()=>{try{await store.set("cg3",JSON.stringify({stats,chonkId,chonkImg,chonkName,age,fed,played,hiStar,hiMem,achievements,presetIdx,lastSave:Date.now()}));}catch{}};const i=setInterval(save,8000);save();return()=>clearInterval(i);},[stats,chonkId,chonkImg,chonkName,age,fed,played,hiStar,hiMem,achievements,presetIdx,loaded]);
