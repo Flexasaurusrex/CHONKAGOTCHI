@@ -91,6 +91,20 @@
       { id:"week_old", name:"One Week", desc:"Chonk survives 7 Chonk days", icon:"📅" },
       { id:"chain_load", name:"Onchain!", desc:"Load a Chonk from the blockchain", icon:"⛓️" },
       { id:"memory", name:"Memory Master", desc:"Score 8+ in Memory Game", icon:"🧠" },
+      { id:"pet_frenzy", name:"Pet Frenzy", desc:"Reach a 12x pet combo", icon:"🤯" },
+    ];
+
+    // ── PET REACTIONS ──
+    const PET_REACTIONS = {
+      ecstatic: { words:["YAAAAS!","BEST DAY!","I LOVE U","CHONK BLISS","*SPARKLES*","MAX CHONK","SO HAPPY","LIVING!","🎉🎉🎉","PEAK CHONK"], emoji:["💖","✨","🌟","💫","🎉","💕","⭐","🥰","💗","🌈"] },
+      happy: { words:["hehe","PURRRR","*happy*","MORE!","yes yes!","chonk!","that's nice","*wiggles*","ooh!","again!"], emoji:["💕","😊","💖","🥰","✨","💗","😄","🫶","💜","❤️"] },
+      content: { words:["ok ok","hmm nice","*nods*","sure","that's ok","mhm","chonk.","not bad","*blink*","oh hey"], emoji:["🙂","💛","😌","👍","💚","😏","🤙","💙","😎","✌️"] },
+      meh: { words:["...","meh","whatever","*sigh*","feed me","I guess","ugh","so hungry","bleh","need food"], emoji:["😐","💤","😑","🥱","😶","💭","😮‍💨","🫤","😒","🤨"] },
+      sad: { words:["*whimper*","please...","so sad","help me","*crying*","why...","lonely","cold...","need love","HELP"], emoji:["😢","💧","🥺","😿","💔","😞","🫠","😣","😥","🆘"] },
+      critical: { words:["!!!","DYING","SOS","*gasp*","FEED ME","HELP!!!","*flailing*","EMERGENCY","CODE RED","MAYDAY"], emoji:["💀","🚨","⚠️","😵","🆘","❌","💔","😵‍💫","🫨","☠️"] },
+    };
+    const PET_COMBOS = [
+      {min:1,msg:null}, {min:3,msg:"Combo x3! 🔥"}, {min:5,msg:"PET FRENZY! ⚡"}, {min:8,msg:"CHONK OVERDRIVE!! 💥"}, {min:12,msg:"LEGENDARY PETS!!! 🌟"}, {min:20,msg:"ASCENDED ✨✨✨"},
     ];
 
     const clamp = (v,lo=0,hi=100) => Math.max(lo,Math.min(hi,v));
@@ -212,6 +226,10 @@
       const [loadingChonk, setLoadingChonk] = useState(false);
       const [screen, setScreen] = useState("game"); // "game"|"setup"
       const [presetIdx, setPresetIdx] = useState(0);
+      const [floats, setFloats] = useState([]); // floating reaction words/emoji
+      const [petCombo, setPetCombo] = useState(0);
+      const petComboTimer = useRef(null);
+      const [petSqueeze, setPetSqueeze] = useState(0); // squeeze animation intensity
 
       // Preset images from chonks.xyz
       const PRESETS = useMemo(()=>[1,2,3,4,5,6,7].map(i=>`https://www.chonks.xyz/chonks/chonk${i}.png`),[]);
@@ -270,7 +288,54 @@
       const feed=(f)=>{if(sleeping){notify("Sleeping! 💤");return;}setStats(p=>({hunger:clamp(p.hunger+f.h),happiness:clamp(p.happiness+f.ha),energy:clamp(p.energy+f.en)}));setFed(p=>p+1);notify(f.e+" Yum!");};
       const play=()=>{if(sleeping){notify("Wake up first! 💤");return;}if(stats.energy<10){notify("Too tired 😴");return;}setPlaying(true);setStats(p=>({...p,happiness:clamp(p.happiness+15),energy:clamp(p.energy-10)}));setPlayed(p=>p+1);notify("Wheee! 🎉");setTimeout(()=>setPlaying(false),3000);};
       const doSleep=()=>{setSleeping(p=>!p);setPlaying(false);notify(sleeping?"Good morning! ☀️":"Goodnight 🌙");};
-      const pet=()=>{if(sleeping){notify("*snoring* 💤");return;}setStats(p=>({...p,happiness:clamp(p.happiness+8)}));notify("*purrs* 💕");};
+
+      const getMoodKey = () => {
+        const a=(stats.hunger+stats.happiness+stats.energy)/3;
+        if(a>=85)return"ecstatic";if(a>=65)return"happy";if(a>=45)return"content";if(a>=25)return"meh";if(a>=10)return"sad";return"critical";
+      };
+
+      const pet=()=>{
+        if(sleeping){notify("*snoring* 💤");return;}
+        // Combo system
+        const newCombo = petCombo + 1;
+        setPetCombo(newCombo);
+        clearTimeout(petComboTimer.current);
+        petComboTimer.current = setTimeout(()=>setPetCombo(0), 1500);
+        // Check combo milestone
+        const combo = [...PET_COMBOS].reverse().find(c=>newCombo>=c.min);
+        if(combo&&combo.msg&&newCombo===combo.min) notify(combo.msg);
+        if(newCombo>=12) unlock("pet_frenzy");
+        // Happiness boost scales with combo
+        const bonus = Math.min(2 + Math.floor(newCombo/3), 8);
+        setStats(p=>({...p,happiness:clamp(p.happiness+bonus)}));
+        // Squeeze animation
+        setPetSqueeze(Math.min(newCombo*2, 15));
+        setTimeout(()=>setPetSqueeze(0), 300);
+        // Floating reactions
+        const mk = getMoodKey();
+        const pool = PET_REACTIONS[mk];
+        const isEmoji = Math.random() > 0.5;
+        const arr = isEmoji ? pool.emoji : pool.words;
+        const text = arr[Math.floor(Math.random()*arr.length)];
+        const id = Date.now() + Math.random();
+        const x = 20 + Math.random() * 60; // % from left
+        const size = isEmoji ? 18 + Math.random()*12 : 11 + Math.random()*3;
+        setFloats(p=>[...p.slice(-8), {id, text, x, size, isEmoji, t:Date.now()}]);
+        // Extra particles on high combos
+        if(newCombo >= 5) {
+          setTimeout(()=>{
+            const t2 = isEmoji ? pool.words[Math.floor(Math.random()*pool.words.length)] : pool.emoji[Math.floor(Math.random()*pool.emoji.length)];
+            setFloats(p=>[...p.slice(-8), {id:Date.now()+Math.random(), text:t2, x:10+Math.random()*80, size:isEmoji?12:16, isEmoji:!isEmoji, t:Date.now()}]);
+          }, 100);
+        }
+      };
+
+      // Clean up old floats
+      useEffect(()=>{
+        if(floats.length===0) return;
+        const i = setInterval(()=>setFloats(p=>p.filter(f=>Date.now()-f.t<1800)),500);
+        return ()=>clearInterval(i);
+      },[floats.length]);
 
       const onStarDone=(score)=>{setGame(null);setStats(p=>({...p,happiness:clamp(p.happiness+Math.min(score*3,40)),energy:clamp(p.energy-15)}));if(score>hiStar){setHiStar(score);notify("New Star Record: "+score+"! 🏆");}else notify("Caught "+score+" stars!");if(score>=10)unlock("star_10");if(score>=20)unlock("star_20");setPlayed(p=>p+1);};
       const onMemDone=(score)=>{setGame(null);setStats(p=>({...p,happiness:clamp(p.happiness+Math.min(score*4,40)),energy:clamp(p.energy-10)}));if(score>hiMem){setHiMem(score);notify("New Memory Record! 🧠");}else notify("Memory complete!");if(score>=8)unlock("memory");setPlayed(p=>p+1);};
@@ -340,12 +405,30 @@
             {game==="star"?<StarGame onDone={onStarDone} onCancel={()=>setGame(null)}/>
             :game==="memory"?<MemoryGame onDone={onMemDone} onCancel={()=>setGame(null)}/>
             :(
-              <div style={{textAlign:"center"}}>
+              <div style={{textAlign:"center",position:"relative"}}>
+                {/* Floating reaction words */}
+                {floats.map(f=>{
+                  const age = (Date.now()-f.t)/1000;
+                  const opacity = Math.max(0, 1 - age/1.8);
+                  const rise = age * 60;
+                  const wobble = Math.sin(age*4+f.x)*8;
+                  return <div key={f.id} style={{
+                    position:"absolute", left:f.x+"%", bottom:200+rise, transform:`translateX(-50%) translateX(${wobble}px)`,
+                    opacity, fontSize:f.size, fontWeight:700, fontFamily:"inherit",
+                    color:f.isEmoji?undefined:C.text, pointerEvents:"none", zIndex:20,
+                    textShadow:f.isEmoji?"none":"0 1px 3px rgba(255,255,255,.8)",
+                    whiteSpace:"nowrap", letterSpacing:f.isEmoji?0:1,
+                  }}>{f.text}</div>;
+                })}
+                {/* Pet combo indicator */}
+                {petCombo>=3&&!game&&<div style={{position:"absolute",top:-4,left:"50%",transform:"translateX(-50%)",fontSize:10,fontWeight:700,color:C.pink,letterSpacing:1,zIndex:20,animation:"pulse .5s infinite",whiteSpace:"nowrap"}}>
+                  PET COMBO x{petCombo}
+                </div>}
                 <div style={{width:200,height:200,background:C.teal,display:"flex",alignItems:"center",justifyContent:"center",margin:"0 auto",position:"relative",overflow:"hidden"}}>
                   <div style={{position:"absolute",inset:0,opacity:.05,backgroundImage:"linear-gradient(#fff 1px,transparent 1px),linear-gradient(90deg,#fff 1px,transparent 1px)",backgroundSize:"24px 24px"}}/>
                   {sleeping&&<div style={{position:"absolute",inset:0,background:"rgba(0,0,0,.35)",zIndex:5,display:"flex",alignItems:"center",justifyContent:"center"}}><span style={{fontSize:32,opacity:.5+Math.sin(frame*.08)*.3}}>💤</span></div>}
                   {avg<15&&!sleeping&&<div style={{position:"absolute",inset:0,background:`rgba(231,76,60,${.1+Math.sin(frame*.3)*.1})`,zIndex:4}}/>}
-                  <div style={{transform:`translateY(${-by}px) translateX(${wx}px) rotate(${wr}deg) scale(${sc})`,transition:playing?"none":"transform .3s",zIndex:6,filter:avg<15?"saturate(.3)":avg<30?"saturate(.7)":"saturate(1)"}}>
+                  <div style={{transform:`translateY(${-by}px) translateX(${wx}px) rotate(${wr}deg) scale(${sc}) scaleX(${1+petSqueeze*.01}) scaleY(${1-petSqueeze*.008})`,transition:petSqueeze>0?"transform .1s":"transform .3s",zIndex:6,filter:avg<15?"saturate(.3)":avg<30?"saturate(.7)":"saturate(1)"}}>
                     <img src={currentImg} alt="Chonk" style={{width:150,height:150,imageRendering:"pixelated",objectFit:"contain"}}
                       onError={e=>{e.target.src="data:image/svg+xml,"+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120"><rect width="100" height="120" fill="#2EA8D5"/><rect x="20" y="5" width="60" height="55" fill="#7EC850"/><rect x="25" y="25" width="50" height="30" fill="#F5D6A8"/><rect x="33" y="32" width="8" height="8" fill="#000"/><rect x="55" y="32" width="8" height="8" fill="#000"/><rect x="40" y="46" width="16" height="4" fill="#000"/><rect x="25" y="60" width="50" height="35" fill="#1a1a1a"/><rect x="30" y="95" width="15" height="20" fill="#2196F3"/><rect x="55" y="95" width="15" height="20" fill="#2196F3"/></svg>');}} />
                   </div>
