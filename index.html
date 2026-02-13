@@ -124,15 +124,33 @@
 
     // ── PET REACTIONS ──
     const PET_REACTIONS = {
-      ecstatic: { words:["YAAAAS!","BEST DAY!","I LOVE U","CHONK BLISS","*SPARKLES*","MAX CHONK","SO HAPPY","LIVING!","🎉🎉🎉","PEAK CHONK"], emoji:["💖","✨","🌟","💫","🎉","💕","⭐","🥰","💗","🌈"] },
-      happy: { words:["hehe","PURRRR","*happy*","MORE!","yes yes!","chonk!","that's nice","*wiggles*","ooh!","again!"], emoji:["💕","😊","💖","🥰","✨","💗","😄","🫶","💜","❤️"] },
-      content: { words:["ok ok","hmm nice","*nods*","sure","that's ok","mhm","chonk.","not bad","*blink*","oh hey"], emoji:["🙂","💛","😌","👍","💚","😏","🤙","💙","😎","✌️"] },
-      meh: { words:["...","meh","whatever","*sigh*","feed me","I guess","ugh","so hungry","bleh","need food"], emoji:["😐","💤","😑","🥱","😶","💭","😮‍💨","🫤","😒","🤨"] },
-      sad: { words:["*whimper*","please...","so sad","help me","*crying*","why...","lonely","cold...","need love","HELP"], emoji:["😢","💧","🥺","😿","💔","😞","🫠","😣","😥","🆘"] },
-      critical: { words:["!!!","DYING","SOS","*gasp*","FEED ME","HELP!!!","*flailing*","EMERGENCY","CODE RED","MAYDAY"], emoji:["💀","🚨","⚠️","😵","🆘","❌","💔","😵‍💫","🫨","☠️"] },
+      ecstatic: {
+        words:["YAAAAS!","BEST DAY!","I LOVE U","CHONK BLISS","*SPARKLES*","MAX CHONK","SO HAPPY","LIVING!","PEAK CHONK","IM ASCENDED","TOUCH ME MORE","*vibrating*","LETS GOOOO","*chef kiss*","SEROTONIN!","I CANT EVEN","BLESS","OVERCHONKED","*explodes*","THIS IS IT","TOP CHONK","*squeals*","EUPHORIA","UNLIMITED PWR","MEGA HAPPY","*glowing*","TRANSCENDENT","BEST HUMAN","ONCHAIN JOY","WE MADE IT"],
+        emoji:["💖","✨","🌟","💫","🎉","💕","⭐","🥰","💗","🌈","🫠","🤩","😍","🥳","💝","🦋","🔥","💎","👑","🫶"]
+      },
+      happy: {
+        words:["hehe","PURRRR","*happy*","MORE!","yes yes!","chonk!","*wiggles*","ooh!","again!","right there","oh yea","*tail wag*","teehee","*nuzzle*","that's it!","so good","*melts*","don't stop","YES HOOMAN","oooooh","*kicks leg*","nice nice","*rolls over*","das good","keep going","*chirps*","uwu","chonky happy","*bounces*","heehee!"],
+        emoji:["💕","😊","💖","🥰","✨","💗","😄","🫶","💜","❤️","😸","🐸","💚","🤭","😏","🙈","💓","🫧","🎶","😋"]
+      },
+      content: {
+        words:["ok ok","hmm nice","*nods*","sure","that's ok","mhm","chonk.","not bad","*blink*","oh hey","acceptable","i guess nice","mmmk","*shrugs*","cool cool","k thx","alright","yep","noted","fine fine","not terrible","*slow blink*","decent","carry on","*chin up*","fair enough","sup","oh. hi.","*nod nod*","mid but ok"],
+        emoji:["🙂","💛","😌","👍","💚","😏","🤙","💙","😎","✌️","🫡","😶‍🌫️","🤷","👌","🆗","😗","🧘","💆","🫥","🙃"]
+      },
+      meh: {
+        words:["...","meh","whatever","*sigh*","feed me","I guess","ugh","so hungry","bleh","need food","really?","not now","*yawns*","bro. food.","pls feed","im starving","do better","*grumbles*","is that it?","try food","pets dont fill","my tummy","*eye roll*","cool. now feed","priorities pls","less pet more food","bruh","im hangry","*stomach growls*","WHERE IS FOOD"],
+        emoji:["😐","💤","😑","🥱","😶","💭","😮‍💨","🫤","😒","🤨","🍕","😤","🙄","😪","🫠","🥴","😾","🤦","💅","🧐"]
+      },
+      sad: {
+        words:["*whimper*","please...","so sad","help me","*crying*","why...","lonely","cold...","need love","HELP","*sniff*","abandoned","remember me?","hello??","is anyone there","*shaking*","dont leave","im scared","so alone","where r u","*reaches out*","save me","pls come back","fading...","*weak wave*","i miss u","still here...","barely","*single tear*","getting dark..."],
+        emoji:["😢","💧","🥺","😿","💔","😞","🫠","😣","😥","🆘","🥀","😭","🫣","😟","😰","🪦","🌧️","😓","💨","🖤"]
+      },
+      critical: {
+        words:["!!!","DYING","SOS","*gasp*","FEED ME","HELP!!!","*flailing*","EMERGENCY","CODE RED","MAYDAY","ITS OVER","IM DONE","*flatline*","goodbye world","tell my chonks","avenge me","*dramatic fall*","the light...","going dark","FINAL CHONK","this is the end","*crawling*","one last pet","remember me","*beeping*","DEFCON 1","CRITICAL HIT","system failure","*windows shutdown*","error 404: life"],
+        emoji:["💀","🚨","⚠️","😵","🆘","❌","💔","😵‍💫","🫨","☠️","⚰️","🪦","📉","🔴","💣","🧊","🫥","😶","🕳️","👻"]
+      },
     };
     const PET_COMBOS = [
-      {min:1,msg:null}, {min:3,msg:"Combo x3! 🔥"}, {min:5,msg:"PET FRENZY! ⚡"}, {min:8,msg:"CHONK OVERDRIVE!! 💥"}, {min:12,msg:"LEGENDARY PETS!!! 🌟"}, {min:20,msg:"ASCENDED ✨✨✨"},
+      {min:1,msg:null}, {min:3,msg:"Combo x3! 🔥"}, {min:5,msg:"PET FRENZY! ⚡"}, {min:8,msg:"CHONK OVERDRIVE!! 💥"}, {min:12,msg:"LEGENDARY PETS!!! 🌟"}, {min:20,msg:"ASCENDED ✨✨✨"}, {min:30,msg:"GODMODE 👑👑👑"},
     ];
 
     // ── CHONK HEAD SVG (pixel-perfect from reference) ──
@@ -320,6 +338,10 @@
         if(d.played!=null)setPlayed(d.played);if(d.hiStar!=null)setHiStar(d.hiStar);if(d.hiMem!=null)setHiMem(d.hiMem);
         if(d.achievements)setAchievements(d.achievements);if(d.presetIdx!=null)setPresetIdx(d.presetIdx);
         if(d.createdAt)setCreatedAt(d.createdAt);
+        // Clean up: remove week_old badge if not actually 7 days old
+        if(d.achievements && d.createdAt && (Date.now()-d.createdAt)/86400000 < 7) {
+          setAchievements(prev => prev.filter(a => a !== "week_old"));
+        }
         if(d.lastSave){const h=(Date.now()-d.lastSave)/3600000,dc=Math.min(h*3,40);
           setStats(p=>({hunger:clamp(p.hunger-dc),happiness:clamp(p.happiness-dc*.7),energy:clamp(p.energy+(d.stats?.energy<50?h*5:-dc*.3))}));}
         setScreen("game");
