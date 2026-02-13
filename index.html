@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CHONKAGOTCHI — Your Chonk is Alive</title>
+  <meta name="description" content="A Tamagotchi-style virtual pet game for Chonks. Feed, play, dress, and care for your Chonk. A gift for Marka from Flex." />
+  <meta property="og:title" content="CHONKAGOTCHI" />
+  <meta property="og:description" content="Your Chonk is alive. Take care of it." />
+  <meta property="og:type" content="website" />
+  <link rel="icon" href="https://www.chonks.xyz/chonks-head-outline.svg" type="image/svg+xml" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      background: #FFFFFF;
+      color: #000000;
+      -webkit-font-smoothing: antialiased;
+    }
+    #root { min-height: 100vh; }
+    /* Custom scrollbar to match aesthetic */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: #fff; }
+    ::-webkit-scrollbar-thumb { background: #000; }
+    /* Disable text selection on game canvas */
+    canvas { user-select: none; -webkit-user-select: none; }
+    /* Pixelated image rendering */
+    img[data-pixel] { image-rendering: pixelated; image-rendering: -moz-crisp-edges; image-rendering: crisp-edges; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef, useCallback } = React;
+
+    // ═══════════════════════════════════════════════════════════
+    //  C H O N K A G O T C H I
+    //  A gift for Marka — from Flex
+    //  "Your Chonk is alive. Take care of it."
+    // ═══════════════════════════════════════════════════════════
+
+    const COLORS = {
+      bg: "#FFFFFF", text: "#000000", teal: "#2EA8D5", tealDark: "#2390B8",
+      muted: "#999999", border: "#E5E5E5", cardBg: "#F7F7F7",
+      success: "#4CAF50", warning: "#FF9800", danger: "#E74C3C", accent: "#FF4D6A",
+    };
+
+    const MONO = "'Courier New', Courier, monospace";
+
+    const SHOWCASE_CHONKS = [
+      "https://www.chonks.xyz/chonks/chonk1.png",
+      "https://www.chonks.xyz/chonks/chonk2.png",
+      "https://www.chonks.xyz/chonks/chonk3.png",
+      "https://www.chonks.xyz/chonks/chonk4.png",
+      "https://www.chonks.xyz/chonks/chonk5.png",
+      "https://www.chonks.xyz/chonks/chonk6.png",
+      "https://www.chonks.xyz/chonks/chonk7.png",
+    ];
+
+    const FOODS = [
+      { name: "Pizza", emoji: "🍕", hunger: 25, happiness: 10, energy: 5, desc: "+25🍔 +10😊" },
+      { name: "Apple", emoji: "🍎", hunger: 15, happiness: 5, energy: 10, desc: "+15🍔 +10⚡" },
+      { name: "Cake", emoji: "🍰", hunger: 10, happiness: 25, energy: -5, desc: "+25😊 -5⚡" },
+      { name: "Coffee", emoji: "☕", hunger: 0, happiness: 5, energy: 30, desc: "+30⚡ +5😊" },
+      { name: "Salad", emoji: "🥗", hunger: 20, happiness: 0, energy: 15, desc: "+20🍔 +15⚡" },
+      { name: "Donut", emoji: "🍩", hunger: 10, happiness: 20, energy: -10, desc: "+20😊 -10⚡" },
+    ];
+
+    const clamp = (v, min = 0, max = 100) => Math.max(min, Math.min(max, v));
+
+    const getMood = (stats) => {
+      const avg = (stats.hunger + stats.happiness + stats.energy) / 3;
+      if (avg >= 85) return { emoji: "✨", label: "Ecstatic!", color: COLORS.success };
+      if (avg >= 65) return { emoji: "😊", label: "Happy", color: COLORS.success };
+      if (avg >= 45) return { emoji: "🙂", label: "Content", color: COLORS.teal };
+      if (avg >= 25) return { emoji: "😐", label: "Meh...", color: COLORS.warning };
+      if (avg >= 10) return { emoji: "😢", label: "Sad", color: COLORS.danger };
+      return { emoji: "💀", label: "HELP ME!", color: COLORS.danger };
+    };
+
+    // ── STORAGE WRAPPER (localStorage for standalone deploy) ──
+    const storage = {
+      async get(key) {
+        try {
+          const v = localStorage.getItem(key);
+          return v ? { value: v } : null;
+        } catch { return null; }
+      },
+      async set(key, value) {
+        try { localStorage.setItem(key, value); return { key, value }; }
+        catch { return null; }
+      },
+    };
+
+    // ── COMPONENTS ──
+    const StatBar = ({ label, value, color, icon }) => (
+      <div style={{ marginBottom: 10 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4, fontFamily: MONO, fontSize: 13, fontWeight: 700 }}>
+          <span>{icon} {label}</span>
+          <span style={{ color: value < 20 ? COLORS.danger : COLORS.muted }}>{Math.round(value)}%</span>
+        </div>
+        <div style={{ width: "100%", height: 12, background: COLORS.border, overflow: "hidden" }}>
+          <div style={{ width: `${value}%`, height: "100%", background: value < 20 ? COLORS.danger : color, transition: "width 0.5s ease" }} />
+        </div>
+      </div>
+    );
+
+    const Toast = ({ message, visible }) => (
+      <div style={{
+        position: "fixed", top: 20, left: "50%",
+        transform: `translateX(-50%) translateY(${visible ? 0 : -60}px)`,
+        opacity: visible ? 1 : 0, transition: "all 0.4s cubic-bezier(0.34,1.56,0.64,1)",
+        background: COLORS.text, color: COLORS.bg, padding: "10px 24px",
+        fontFamily: MONO, fontSize: 14, fontWeight: 700, zIndex: 1000,
+        pointerEvents: "none", whiteSpace: "nowrap", letterSpacing: 1,
+      }}>{message}</div>
+    );
+
+    const ChonkBtn = ({ children, onClick, color = COLORS.text, disabled = false }) => {
+      const [hover, setHover] = useState(false);
+      return (
+        <button onClick={onClick} disabled={disabled}
+          onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}
+          style={{
+            background: hover && !disabled ? color : COLORS.bg,
+            border: `2px solid ${color}`, color: hover && !disabled ? COLORS.bg : color,
+            padding: "10px 16px", fontFamily: MONO, fontSize: 12, fontWeight: 900,
+            cursor: disabled ? "not-allowed" : "pointer", opacity: disabled ? 0.35 : 1,
+            transition: "all 0.15s ease", width: "100%", letterSpacing: 1,
+          }}>{children}</button>
+      );
+    };
+
+    const FoodBtn = ({ food, onClick }) => {
+      const [h, setH] = useState(false);
+      return (
+        <button onClick={onClick} onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)}
+          style={{
+            background: h ? COLORS.text : COLORS.bg, border: `2px solid ${COLORS.text}`,
+            color: h ? COLORS.bg : COLORS.text, padding: "10px 4px", cursor: "pointer",
+            fontFamily: MONO, transition: "all 0.15s", display: "flex", flexDirection: "column",
+            alignItems: "center", gap: 2,
+          }}>
+          <span style={{ fontSize: 22 }}>{food.emoji}</span>
+          <span style={{ fontSize: 10, fontWeight: 700 }}>{food.name}</span>
+          <span style={{ fontSize: 8, opacity: 0.6 }}>{food.desc}</span>
+        </button>
+      );
+    };
+
+    // ── MINI GAME ──
+    const MiniGame = ({ onComplete, onCancel }) => {
+      const canvasRef = useRef(null);
+      const gs = useRef({ stars: [], score: 0, catcherX: 150, started: Date.now() });
+
+      useEffect(() => {
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+        let running = true;
+        let raf;
+
+        const loop = () => {
+          if (!running) return;
+          const g = gs.current;
+          const elapsed = (Date.now() - g.started) / 1000;
+          const timeLeft = Math.max(0, 15 - elapsed);
+          if (timeLeft <= 0) { onComplete(g.score); return; }
+
+          ctx.clearRect(0, 0, 300, 300);
+          ctx.fillStyle = COLORS.teal;
+          ctx.fillRect(0, 0, 300, 300);
+
+          ctx.strokeStyle = "rgba(255,255,255,0.08)";
+          ctx.lineWidth = 1;
+          for (let i = 0; i < 300; i += 24) {
+            ctx.beginPath(); ctx.moveTo(i, 0); ctx.lineTo(i, 300); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(0, i); ctx.lineTo(300, i); ctx.stroke();
+          }
+
+          if (Math.random() < 0.06) g.stars.push({ x: 20 + Math.random() * 260, y: -10, speed: 1.5 + Math.random() * 2.5, size: 10 + Math.random() * 6 });
+
+          g.stars = g.stars.filter(s => {
+            s.y += s.speed;
+            if (s.y > 258 && s.y < 295 && Math.abs(s.x - g.catcherX) < 28) { g.score++; return false; }
+            if (s.y > 310) return false;
+            ctx.fillStyle = "#fff";
+            ctx.fillRect(s.x - s.size / 2, s.y - 2, s.size, 4);
+            ctx.fillRect(s.x - 2, s.y - s.size / 2, 4, s.size);
+            ctx.fillStyle = "#FFE066";
+            ctx.fillRect(s.x - 2, s.y - 2, 4, 4);
+            return true;
+          });
+
+          ctx.fillStyle = "#fff";
+          ctx.fillRect(g.catcherX - 24, 270, 48, 16);
+          ctx.fillStyle = COLORS.text;
+          ctx.fillRect(g.catcherX - 22, 272, 44, 12);
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 9px " + MONO;
+          ctx.textAlign = "center";
+          ctx.fillText("CHONK", g.catcherX, 282);
+
+          ctx.fillStyle = "#fff";
+          ctx.font = "bold 16px " + MONO;
+          ctx.textAlign = "left";
+          ctx.fillText("★ " + g.score, 12, 28);
+          ctx.textAlign = "right";
+          ctx.fillText(Math.ceil(timeLeft) + "s", 288, 28);
+
+          raf = requestAnimationFrame(loop);
+        };
+
+        const handleMove = (e) => {
+          const rect = canvas.getBoundingClientRect();
+          const x = (e.clientX || (e.touches && e.touches[0] && e.touches[0].clientX)) - rect.left;
+          gs.current.catcherX = clamp(x * (300 / rect.width), 24, 276);
+        };
+
+        canvas.addEventListener("mousemove", handleMove);
+        canvas.addEventListener("touchmove", handleMove, { passive: true });
+        loop();
+
+        return () => {
+          running = false;
+          if (raf) cancelAnimationFrame(raf);
+          canvas.removeEventListener("mousemove", handleMove);
+          canvas.removeEventListener("touchmove", handleMove);
+        };
+      }, [onComplete]);
+
+      return (
+        <div style={{ textAlign: "center" }}>
+          <canvas ref={canvasRef} width={300} height={300} style={{
+            width: "100%", maxWidth: 300, cursor: "none",
+            imageRendering: "pixelated", border: `2px solid ${COLORS.text}`,
+          }} />
+          <p style={{ fontFamily: MONO, fontSize: 11, color: COLORS.muted, margin: "6px 0" }}>Move to catch stars!</p>
+          <button onClick={onCancel} style={{
+            background: "none", border: `1px solid ${COLORS.border}`, color: COLORS.muted,
+            padding: "4px 16px", cursor: "pointer", fontFamily: MONO, fontSize: 11,
+          }}>cancel</button>
+        </div>
+      );
+    };
+
+    // ══════════════════════════════
+    //  MAIN APP
+    // ══════════════════════════════
+    function Chonkagotchi() {
+      const [stats, setStats] = useState({ hunger: 70, happiness: 70, energy: 70 });
+      const [chonkIdx, setChonkIdx] = useState(0);
+      const [chonkName, setChonkName] = useState("Chonkie");
+      const [nameEditing, setNameEditing] = useState(false);
+      const [tab, setTab] = useState("care");
+      const [isPlaying, setIsPlaying] = useState(false);
+      const [isSleeping, setIsSleeping] = useState(false);
+      const [miniGame, setMiniGame] = useState(false);
+      const [toast, setToast] = useState({ message: "", visible: false });
+      const [age, setAge] = useState(0);
+      const [totalFeedings, setTotalFeedings] = useState(0);
+      const [totalPlays, setTotalPlays] = useState(0);
+      const [highScore, setHighScore] = useState(0);
+      const [loaded, setLoaded] = useState(false);
+      const [frame, setFrame] = useState(0);
+
+      useEffect(() => { const i = setInterval(() => setFrame(f => f + 1), 100); return () => clearInterval(i); }, []);
+
+      // Persistence
+      useEffect(() => {
+        (async () => {
+          try {
+            const r = await storage.get("chonkagotchi-v2");
+            if (r && r.value) {
+              const d = JSON.parse(r.value);
+              if (d.stats) setStats(d.stats);
+              if (d.chonkIdx != null) setChonkIdx(d.chonkIdx);
+              if (d.chonkName) setChonkName(d.chonkName);
+              if (d.age != null) setAge(d.age);
+              if (d.totalFeedings != null) setTotalFeedings(d.totalFeedings);
+              if (d.totalPlays != null) setTotalPlays(d.totalPlays);
+              if (d.highScore != null) setHighScore(d.highScore);
+              if (d.lastSave) {
+                const h = (Date.now() - d.lastSave) / 3600000;
+                const decay = Math.min(h * 3, 40);
+                setStats(p => ({
+                  hunger: clamp(p.hunger - decay),
+                  happiness: clamp(p.happiness - decay * 0.7),
+                  energy: clamp(p.energy + (d.stats && d.stats.energy < 50 ? h * 5 : -decay * 0.3)),
+                }));
+              }
+            }
+          } catch (e) {}
+          setLoaded(true);
+        })();
+      }, []);
+
+      useEffect(() => {
+        if (!loaded) return;
+        const save = async () => {
+          try { await storage.set("chonkagotchi-v2", JSON.stringify({ stats, chonkIdx, chonkName, age, totalFeedings, totalPlays, highScore, lastSave: Date.now() })); }
+          catch (e) {}
+        };
+        const i = setInterval(save, 10000);
+        save();
+        return () => clearInterval(i);
+      }, [stats, chonkIdx, chonkName, age, totalFeedings, totalPlays, highScore, loaded]);
+
+      const showToast = useCallback((msg) => {
+        setToast({ message: msg, visible: true });
+        setTimeout(() => setToast(p => ({ ...p, visible: false })), 2500);
+      }, []);
+
+      // Stat decay
+      useEffect(() => {
+        if (!loaded) return;
+        const i = setInterval(() => {
+          setStats(p => ({
+            hunger: clamp(p.hunger - 0.15),
+            happiness: clamp(p.happiness - 0.1),
+            energy: isSleeping ? clamp(p.energy + 0.5) : clamp(p.energy - 0.08),
+          }));
+          setAge(p => p + 1);
+        }, 3000);
+        return () => clearInterval(i);
+      }, [isSleeping, loaded]);
+
+      // Actions
+      const feed = (food) => {
+        if (isSleeping) { showToast("Shhh... sleeping! 💤"); return; }
+        setStats(p => ({ hunger: clamp(p.hunger + food.hunger), happiness: clamp(p.happiness + food.happiness), energy: clamp(p.energy + food.energy) }));
+        setTotalFeedings(p => p + 1);
+        showToast(food.emoji + " Yum!");
+      };
+
+      const play = () => {
+        if (isSleeping) { showToast("Wake up first! 💤"); return; }
+        if (stats.energy < 10) { showToast("Too tired... 😴"); return; }
+        setIsPlaying(true);
+        setStats(p => ({ ...p, happiness: clamp(p.happiness + 15), energy: clamp(p.energy - 10) }));
+        setTotalPlays(p => p + 1);
+        showToast("Wheee! 🎉");
+        setTimeout(() => setIsPlaying(false), 3000);
+      };
+
+      const toggleSleep = () => {
+        setIsSleeping(p => !p);
+        setIsPlaying(false);
+        showToast(isSleeping ? "Good morning! ☀️" : "Goodnight... 🌙");
+      };
+
+      const pet = () => {
+        if (isSleeping) { showToast("*snoring* 💤"); return; }
+        setStats(p => ({ ...p, happiness: clamp(p.happiness + 8) }));
+        showToast("*purrs* 💕");
+      };
+
+      const handleMiniGameComplete = (score) => {
+        setMiniGame(false);
+        setStats(p => ({ ...p, happiness: clamp(p.happiness + Math.min(score * 3, 40)), energy: clamp(p.energy - 15) }));
+        if (score > highScore) { setHighScore(score); showToast("New High Score: " + score + "! 🏆"); }
+        else showToast("Caught " + score + " stars! ★");
+        setTotalPlays(p => p + 1);
+      };
+
+      const mood = getMood(stats);
+      const avg = (stats.hunger + stats.happiness + stats.energy) / 3;
+      const bounceY = isPlaying ? Math.abs(Math.sin(frame * 0.4)) * 16 : Math.sin(frame * 0.15) * 3;
+      const wobbleX = isPlaying ? Math.sin(frame * 0.5) * 8 : 0;
+      const wobbleR = isPlaying ? Math.sin(frame * 0.6) * 8 : Math.sin(frame * 0.1) * 1;
+      const scale = 1 + Math.sin(frame * 0.12) * 0.015;
+
+      if (!loaded) return (
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100vh", background: COLORS.bg, fontFamily: MONO }}>
+          <div style={{ fontSize: 28, fontWeight: 900, letterSpacing: 4 }}>CHONKAGOTCHI</div>
+          <div style={{ color: COLORS.muted, fontSize: 13, marginTop: 6 }}>Loading...</div>
+        </div>
+      );
+
+      return (
+        <div style={{ maxWidth: 440, margin: "0 auto", background: COLORS.bg, minHeight: "100vh", fontFamily: MONO, color: COLORS.text, position: "relative" }}>
+          <Toast message={toast.message} visible={toast.visible} />
+
+          {/* HEADER */}
+          <div style={{ textAlign: "center", padding: "20px 20px 12px", borderBottom: "2px solid " + COLORS.text }}>
+            <div style={{ fontSize: 26, fontWeight: 900, letterSpacing: 4 }}>CHONKAGOTCHI</div>
+            <div style={{ fontSize: 11, color: COLORS.muted, letterSpacing: 2, marginTop: 2, marginBottom: 12 }}>A gift for Marka — from Flex</div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12 }}>
+              {nameEditing ? (
+                <input autoFocus value={chonkName}
+                  onChange={e => setChonkName(e.target.value.slice(0, 16))}
+                  onBlur={() => setNameEditing(false)}
+                  onKeyDown={e => { if (e.key === "Enter") setNameEditing(false); }}
+                  style={{ background: COLORS.bg, border: "2px solid " + COLORS.text, color: COLORS.text, padding: "6px 12px", fontFamily: MONO, fontSize: 16, fontWeight: 900, textAlign: "center", width: 160, outline: "none" }} />
+              ) : (
+                <span onClick={() => setNameEditing(true)}
+                  style={{ fontSize: 16, fontWeight: 900, cursor: "pointer", borderBottom: "1px dashed " + COLORS.muted }}
+                  title="Click to rename">{chonkName}</span>
+              )}
+              <span style={{ fontSize: 12, color: mood.color, fontWeight: 700, border: "1.5px solid " + mood.color, padding: "3px 10px" }}>
+                {mood.emoji} {mood.label}
+              </span>
+            </div>
+          </div>
+
+          {/* CHONK DISPLAY */}
+          <div onClick={!miniGame ? pet : undefined}
+            style={{ display: "flex", justifyContent: "center", alignItems: "center", padding: 20, cursor: miniGame ? "default" : "pointer", minHeight: 280, position: "relative" }}>
+            {miniGame ? (
+              <MiniGame onComplete={handleMiniGameComplete} onCancel={() => setMiniGame(false)} />
+            ) : (
+              <div style={{ position: "relative", textAlign: "center" }}>
+                <div style={{ width: 220, height: 220, background: COLORS.teal, display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto", position: "relative", overflow: "hidden" }}>
+                  {/* Grid */}
+                  <div style={{ position: "absolute", inset: 0, opacity: 0.06, backgroundImage: "linear-gradient(#fff 1px, transparent 1px), linear-gradient(90deg, #fff 1px, transparent 1px)", backgroundSize: "24px 24px" }} />
+
+                  {isSleeping && (
+                    <div style={{ position: "absolute", inset: 0, background: "rgba(0,0,0,0.35)", zIndex: 5, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <span style={{ fontSize: 36, opacity: 0.5 + Math.sin(frame * 0.08) * 0.3 }}>💤</span>
+                    </div>
+                  )}
+
+                  {avg < 15 && !isSleeping && (
+                    <div style={{ position: "absolute", inset: 0, background: "rgba(231,76,60," + (0.1 + Math.sin(frame * 0.3) * 0.1) + ")", zIndex: 4 }} />
+                  )}
+
+                  <div style={{
+                    transform: "translateY(" + (-bounceY) + "px) translateX(" + wobbleX + "px) rotate(" + wobbleR + "deg) scale(" + scale + ")",
+                    transition: isPlaying ? "none" : "transform 0.3s ease",
+                    zIndex: 6, filter: avg < 15 ? "saturate(0.3)" : avg < 30 ? "saturate(0.7)" : "saturate(1)",
+                  }}>
+                    <img
+                      data-pixel="true"
+                      src={SHOWCASE_CHONKS[chonkIdx % SHOWCASE_CHONKS.length]}
+                      alt="Your Chonk"
+                      style={{ width: 160, height: 160, imageRendering: "pixelated", objectFit: "contain" }}
+                      onError={function(e) { e.target.src = "data:image/svg+xml," + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 120"><rect width="100" height="120" fill="#2EA8D5" rx="0"/><rect x="20" y="5" width="60" height="55" fill="#7EC850"/><rect x="25" y="25" width="50" height="30" fill="#F5D6A8"/><rect x="33" y="32" width="8" height="8" fill="#000"/><rect x="55" y="32" width="8" height="8" fill="#000"/><rect x="40" y="46" width="16" height="4" fill="#000" rx="0"/><rect x="25" y="60" width="50" height="35" fill="#1a1a1a"/><rect x="30" y="95" width="15" height="20" fill="#2196F3"/><rect x="55" y="95" width="15" height="20" fill="#2196F3"/></svg>'); }}
+                    />
+                  </div>
+
+                  {avg >= 80 && !isSleeping && [0,1,2,3,4].map(i => (
+                    <div key={i} style={{
+                      position: "absolute",
+                      left: 30 + Math.sin(frame * 0.05 + i * 1.3) * 80 + 40,
+                      top: 30 + Math.cos(frame * 0.04 + i * 1.5) * 60 + 40,
+                      width: 4, height: 4, background: "#FFE066",
+                      opacity: 0.4 + Math.sin(frame * 0.1 + i) * 0.4, zIndex: 7,
+                    }} />
+                  ))}
+
+                  {avg < 25 && !isSleeping && (
+                    <div style={{
+                      position: "absolute", right: 30, top: 40 + (frame * 2) % 60,
+                      width: 6, height: 10,
+                      background: "rgba(100,180,255," + (0.7 - ((frame * 2) % 60) / 80) + ")",
+                      borderRadius: "0 0 50% 50%", zIndex: 7,
+                    }} />
+                  )}
+                </div>
+                <div style={{ fontSize: 10, color: COLORS.muted, marginTop: 8, letterSpacing: 1, textTransform: "uppercase" }}>click to pet</div>
+              </div>
+            )}
+          </div>
+
+          {/* STATS */}
+          <div style={{ padding: "0 24px 8px" }}>
+            <StatBar label="Hunger" value={stats.hunger} color={COLORS.warning} icon="🍔" />
+            <StatBar label="Happiness" value={stats.happiness} color={COLORS.teal} icon="😊" />
+            <StatBar label="Energy" value={stats.energy} color={COLORS.success} icon="⚡" />
+          </div>
+
+          {/* TABS */}
+          <div style={{ display: "flex", borderTop: "2px solid " + COLORS.text, borderBottom: "2px solid " + COLORS.text }}>
+            {["CARE", "PLAY", "DRESS", "STATS"].map(function(t, i) {
+              return (
+                <button key={t} onClick={function() { setTab(t.toLowerCase()); }}
+                  style={{
+                    flex: 1, padding: "10px 0", textAlign: "center", fontSize: 12, fontWeight: 900,
+                    letterSpacing: 2, fontFamily: MONO,
+                    color: tab === t.toLowerCase() ? COLORS.bg : COLORS.text,
+                    background: tab === t.toLowerCase() ? COLORS.text : COLORS.bg,
+                    border: "none", borderRight: i < 3 ? "1px solid " + COLORS.text : "none",
+                    cursor: "pointer", transition: "all 0.15s",
+                  }}>{t}</button>
+              );
+            })}
+          </div>
+
+          {/* CONTENT */}
+          <div style={{ padding: "16px 24px", minHeight: 200 }}>
+
+            {tab === "care" && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: COLORS.muted, marginBottom: 12, letterSpacing: 2 }}>FEED YOUR CHONK</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8 }}>
+                  {FOODS.map(function(food, i) {
+                    return <FoodBtn key={i} food={food} onClick={function() { feed(food); }} />;
+                  })}
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 14 }}>
+                  <ChonkBtn onClick={toggleSleep} color={isSleeping ? COLORS.warning : COLORS.teal}>
+                    {isSleeping ? "☀️ WAKE UP" : "🌙 SLEEP"}
+                  </ChonkBtn>
+                  <ChonkBtn onClick={pet} color={COLORS.accent}>💕 PET</ChonkBtn>
+                </div>
+              </div>
+            )}
+
+            {tab === "play" && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: COLORS.muted, marginBottom: 12, letterSpacing: 2 }}>ACTIVITIES</div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <ChonkBtn onClick={play} color={COLORS.success} disabled={isSleeping || stats.energy < 10}>🎾 PLAY</ChonkBtn>
+                  <ChonkBtn onClick={function() {
+                    if (isSleeping) { showToast("Wake up first! 💤"); return; }
+                    if (stats.energy < 15) { showToast("Too tired... 😴"); return; }
+                    setMiniGame(true);
+                  }} color={COLORS.teal} disabled={isSleeping || stats.energy < 15}>★ STAR CATCHER</ChonkBtn>
+                </div>
+                {highScore > 0 && (
+                  <div style={{ marginTop: 14, textAlign: "center", fontSize: 13, fontWeight: 900, color: COLORS.teal, border: "2px solid " + COLORS.teal, padding: 8 }}>
+                    🏆 High Score: {highScore}
+                  </div>
+                )}
+                <div style={{ marginTop: 16, padding: 14, background: COLORS.cardBg, fontSize: 12, color: COLORS.muted, lineHeight: 1.8, border: "1px solid " + COLORS.border }}>
+                  <strong style={{ color: COLORS.text }}>HOW TO PLAY:</strong><br />
+                  Playing boosts happiness, costs energy. Star Catcher gives bigger bonuses. Sleep to restore energy. Click your Chonk to pet it anytime.
+                </div>
+              </div>
+            )}
+
+            {tab === "dress" && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: COLORS.muted, marginBottom: 12, letterSpacing: 2 }}>CHOOSE YOUR CHONK</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 16 }}>
+                  {SHOWCASE_CHONKS.map(function(url, i) {
+                    return (
+                      <button key={i} onClick={function() { setChonkIdx(i); showToast("Chonk " + (i + 1) + "!"); }}
+                        style={{
+                          width: "100%", aspectRatio: "1",
+                          background: chonkIdx === i ? COLORS.teal : COLORS.cardBg,
+                          border: chonkIdx === i ? "3px solid " + COLORS.text : "2px solid " + COLORS.border,
+                          cursor: "pointer", padding: 4, transition: "all 0.15s", overflow: "hidden",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                        }}>
+                        <img src={url} alt={"Chonk " + (i + 1)}
+                          style={{ width: "90%", height: "90%", objectFit: "contain", imageRendering: "pixelated" }}
+                          onError={function(e) { e.target.style.display = "none"; }} />
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ padding: 12, background: COLORS.cardBg, border: "1px solid " + COLORS.border, fontSize: 11, color: COLORS.muted, lineHeight: 1.8, textAlign: "center" }}>
+                  Chonks are CC0 — remix accordingly<br />
+                  All art from <a href="https://chonks.xyz" target="_blank" rel="noopener noreferrer" style={{ color: COLORS.teal, fontWeight: 700, textDecoration: "none" }}>chonks.xyz</a>
+                </div>
+              </div>
+            )}
+
+            {tab === "stats" && (
+              <div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: COLORS.muted, marginBottom: 12, letterSpacing: 2 }}>CHONK PROFILE</div>
+                <div style={{ border: "2px solid " + COLORS.text, overflow: "hidden" }}>
+                  {[["Name", chonkName], ["Age", Math.floor(age / 20) + " Chonk days"], ["Mood", mood.emoji + " " + mood.label], ["Times Fed", totalFeedings], ["Times Played", totalPlays], ["High Score", highScore], ["Chonk #", chonkIdx + 1]].map(function(row, i) {
+                    return (
+                      <div key={row[0]} style={{
+                        display: "flex", justifyContent: "space-between", padding: "10px 14px",
+                        fontSize: 13, fontWeight: 700,
+                        background: i % 2 === 0 ? COLORS.bg : COLORS.cardBg,
+                        borderBottom: i < 6 ? "1px solid " + COLORS.border : "none",
+                      }}>
+                        <span style={{ color: COLORS.muted }}>{row[0]}</span>
+                        <span>{row[1]}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ marginTop: 16, padding: 14, textAlign: "center", border: "2px solid " + COLORS.teal, fontSize: 11, color: COLORS.muted, lineHeight: 2 }}>
+                  <span style={{ fontWeight: 900, color: COLORS.text, fontSize: 13 }}>CHONKAGOTCHI</span><br />
+                  Built with ❤️ for the Chonks community<br />
+                  <a href="https://chonks.xyz" target="_blank" rel="noopener noreferrer" style={{ color: COLORS.teal, fontWeight: 700, textDecoration: "none" }}>chonks.xyz</a>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* FOOTER */}
+          <div style={{ textAlign: "center", padding: "12px 24px 24px", fontSize: 10, color: COLORS.muted, letterSpacing: 2, borderTop: "1px solid " + COLORS.border }}>
+            LET'S F*CKING CHONK!
+          </div>
+        </div>
+      );
+    }
+
+    // ── MOUNT ──
+    ReactDOM.render(<Chonkagotchi />, document.getElementById("root"));
+  </script>
+</body>
+</html>
