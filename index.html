@@ -46,7 +46,7 @@
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
-    @keyframes chonkSpin { 0% { transform: rotate(0deg) scale(1); } 25% { transform: rotate(90deg) scale(1.1); } 50% { transform: rotate(180deg) scale(1); } 75% { transform: rotate(270deg) scale(1.1); } 100% { transform: rotate(360deg) scale(1); } }
+    @keyframes chonkSpin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
     @keyframes textReveal { 0% { opacity: 0; transform: translateY(16px) scaleY(0); } 60% { opacity: 1; transform: translateY(-4px) scaleY(1.1); } 100% { opacity: 1; transform: translateY(0) scaleY(1); } }
     @keyframes textGlow { 0%,100% { text-shadow: 0 0 0px rgba(46,168,213,0); } 50% { text-shadow: 0 0 12px rgba(46,168,213,.5); } }
     @keyframes dotBounce { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
@@ -138,28 +138,27 @@
     // ── CHONK HEAD SVG (pixel-perfect from reference) ──
     // ── ANIMATED LOADING SCREEN ──
     const LoadingScreen = () => {
-      const [phase, setPhase] = useState(0); // 0=spinning, 1=text reveal, 2=subtitle
+      const [phase, setPhase] = useState(0); // 0=spinning only, 1=title, 2=subtitle, 3=fade ready
       useEffect(()=>{
-        const t1 = setTimeout(()=>setPhase(1), 1000);
-        const t2 = setTimeout(()=>setPhase(2), 1800);
-        return ()=>{clearTimeout(t1);clearTimeout(t2);};
+        const t1 = setTimeout(()=>setPhase(1), 1800);  // title appears
+        const t2 = setTimeout(()=>setPhase(2), 3000);  // subtitle appears
+        const t3 = setTimeout(()=>setPhase(3), 4200);  // everything settled
+        return ()=>{clearTimeout(t1);clearTimeout(t2);clearTimeout(t3);};
       },[]);
       return (
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100dvh",background:"#fff",gap:20,overflow:"hidden"}}>
-          {/* Spinning Chonk Head — uses the real favicon from the repo */}
-          <div style={{animation:"chonkSpin 1s cubic-bezier(.4,0,.2,1) infinite",willChange:"transform"}}>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100dvh",background:"#fff",gap:24,overflow:"hidden"}}>
+          {/* Spinning Chonk Head — smooth continuous rotation */}
+          <div style={{animation:"chonkSpin .8s linear infinite",willChange:"transform"}}>
             <img src="android-chrome-192x192.png" alt="Chonk" style={{width:120,height:120,imageRendering:"pixelated"}} />
           </div>
           {/* Title text */}
           <div style={{textAlign:"center",overflow:"hidden"}}>
-            <div style={{fontSize:22,fontWeight:700,letterSpacing:4,fontFamily:"'Space Mono',monospace",opacity:phase>=1?1:0,animation:phase>=1?"textReveal .5s cubic-bezier(.34,1.56,.64,1) forwards":"none"}}>
+            <div style={{fontSize:22,fontWeight:700,letterSpacing:4,fontFamily:"'Space Mono',monospace",opacity:phase>=1?1:0,transform:phase>=1?"translateY(0) scaleY(1)":"translateY(16px) scaleY(0)",transition:"all .6s cubic-bezier(.34,1.56,.64,1)"}}>
               CHONKAGOTCHI
             </div>
-            {phase>=2&&(
-              <div style={{fontSize:12,fontWeight:700,letterSpacing:3,color:C.teal,marginTop:10,animation:"textReveal .4s cubic-bezier(.34,1.56,.64,1) forwards, textGlow 2s ease infinite"}}>
-                LET'S F*CKING CHONK!
-              </div>
-            )}
+            <div style={{fontSize:12,fontWeight:700,letterSpacing:3,color:C.teal,marginTop:12,opacity:phase>=2?1:0,transform:phase>=2?"translateY(0)":"translateY(12px)",transition:"all .5s cubic-bezier(.34,1.56,.64,1) .1s",animation:phase>=2?"textGlow 2s ease infinite .5s":"none"}}>
+              LET'S F*CKING CHONK!
+            </div>
           </div>
           {/* Loading dots */}
           <div style={{display:"flex",gap:6,marginTop:4}}>
@@ -313,7 +312,7 @@
 
       // Load save — with minimum display time for loading animation
       useEffect(()=>{(async()=>{
-        const minDelay = new Promise(r=>setTimeout(r, 2500));
+        const minDelay = new Promise(r=>setTimeout(r, 5000));
         try{const r=await store.get("cg3");if(r&&r.value){const d=JSON.parse(r.value);
         if(d.stats)setStats(d.stats);if(d.chonkId!=null)setChonkId(d.chonkId);if(d.chonkImg)setChonkImg(d.chonkImg);
         if(d.chonkName)setChonkName(d.chonkName);if(d.age!=null)setAge(d.age);if(d.fed!=null)setFed(d.fed);
