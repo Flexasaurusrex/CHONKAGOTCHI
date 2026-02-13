@@ -6,7 +6,8 @@
   <title>CHONKAGOTCHI</title>
   <meta name="description" content="Your Chonk is alive. Take care of it. A Tamagotchi for Chonks." />
   <meta name="theme-color" content="#000000" />
-  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🟢</text></svg>" />
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 11' shape-rendering='crispEdges'%3E%3Crect x='2' y='0' width='10' height='1' fill='%23E8C170'/%3E%3Crect x='1' y='1' width='12' height='7' fill='%23E8C170'/%3E%3Crect x='2' y='9' width='10' height='1' fill='%23E8C170'/%3E%3Crect x='3' y='10' width='8' height='1' fill='%23E8C170'/%3E%3Crect x='0' y='4' width='1' height='3' fill='%23E8C170'/%3E%3Crect x='13' y='4' width='1' height='3' fill='%23E8C170'/%3E%3Crect x='0' y='3' width='1' height='2' fill='%23D4A84B'/%3E%3Crect x='5' y='5' width='4' height='1' fill='%23D4A84B'/%3E%3Crect x='3' y='5' width='1' height='2' fill='%23ddd'/%3E%3Crect x='4' y='5' width='1' height='2' fill='%23111'/%3E%3Crect x='9' y='5' width='1' height='2' fill='%23ddd'/%3E%3Crect x='10' y='5' width='1' height='2' fill='%23111'/%3E%3C/svg%3E" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 11' shape-rendering='crispEdges'%3E%3Crect x='2' y='0' width='10' height='1' fill='%23E8C170'/%3E%3Crect x='1' y='1' width='12' height='7' fill='%23E8C170'/%3E%3Crect x='2' y='9' width='10' height='1' fill='%23E8C170'/%3E%3Crect x='3' y='10' width='8' height='1' fill='%23E8C170'/%3E%3Crect x='0' y='4' width='1' height='3' fill='%23E8C170'/%3E%3Crect x='13' y='4' width='1' height='3' fill='%23E8C170'/%3E%3Crect x='0' y='3' width='1' height='2' fill='%23D4A84B'/%3E%3Crect x='5' y='5' width='4' height='1' fill='%23D4A84B'/%3E%3Crect x='3' y='5' width='1' height='2' fill='%23ddd'/%3E%3Crect x='4' y='5' width='1' height='2' fill='%23111'/%3E%3Crect x='9' y='5' width='1' height='2' fill='%23ddd'/%3E%3Crect x='10' y='5' width='1' height='2' fill='%23111'/%3E%3C/svg%3E" sizes="any" />
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
     *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
@@ -22,6 +23,10 @@
     @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
     @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
     @keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+    @keyframes chonkSpin { 0% { transform: rotate(0deg) scale(1); } 25% { transform: rotate(90deg) scale(1.1); } 50% { transform: rotate(180deg) scale(1); } 75% { transform: rotate(270deg) scale(1.1); } 100% { transform: rotate(360deg) scale(1); } }
+    @keyframes textReveal { 0% { opacity: 0; transform: translateY(16px) scaleY(0); } 60% { opacity: 1; transform: translateY(-4px) scaleY(1.1); } 100% { opacity: 1; transform: translateY(0) scaleY(1); } }
+    @keyframes textGlow { 0%,100% { text-shadow: 0 0 0px rgba(46,168,213,0); } 50% { text-shadow: 0 0 12px rgba(46,168,213,.5); } }
+    @keyframes dotBounce { 0%,80%,100% { transform: translateY(0); } 40% { transform: translateY(-6px); } }
   </style>
 </head>
 <body>
@@ -106,6 +111,67 @@
     const PET_COMBOS = [
       {min:1,msg:null}, {min:3,msg:"Combo x3! 🔥"}, {min:5,msg:"PET FRENZY! ⚡"}, {min:8,msg:"CHONK OVERDRIVE!! 💥"}, {min:12,msg:"LEGENDARY PETS!!! 🌟"}, {min:20,msg:"ASCENDED ✨✨✨"},
     ];
+
+    // ── CHONK HEAD SVG (pixel-perfect from reference) ──
+    const ChonkHead = ({size=120}) => (
+      <svg viewBox="0 0 14 11" width={size} height={size*11/14} style={{imageRendering:"pixelated"}} shapeRendering="crispEdges">
+        {/* Head shape - golden tan */}
+        <rect x="2" y="0" width="10" height="1" fill="#E8C170"/>
+        <rect x="1" y="1" width="12" height="1" fill="#E8C170"/>
+        <rect x="1" y="2" width="12" height="1" fill="#E8C170"/>
+        <rect x="1" y="3" width="12" height="1" fill="#E8C170"/>
+        <rect x="0" y="4" width="14" height="1" fill="#E8C170"/>
+        <rect x="0" y="5" width="14" height="1" fill="#E8C170"/>
+        <rect x="0" y="6" width="14" height="1" fill="#E8C170"/>
+        <rect x="1" y="7" width="12" height="1" fill="#E8C170"/>
+        <rect x="1" y="8" width="12" height="1" fill="#E8C170"/>
+        <rect x="2" y="9" width="10" height="1" fill="#E8C170"/>
+        <rect x="3" y="10" width="8" height="1" fill="#E8C170"/>
+        {/* Ear - darker gold */}
+        <rect x="0" y="3" width="1" height="2" fill="#D4A84B"/>
+        {/* Nose bridge - darker gold */}
+        <rect x="5" y="5" width="4" height="1" fill="#D4A84B"/>
+        {/* Left eye */}
+        <rect x="3" y="5" width="1" height="2" fill="#ddd"/>
+        <rect x="4" y="5" width="1" height="2" fill="#111"/>
+        {/* Right eye */}
+        <rect x="9" y="5" width="1" height="2" fill="#ddd"/>
+        <rect x="10" y="5" width="1" height="2" fill="#111"/>
+      </svg>
+    );
+
+    // ── ANIMATED LOADING SCREEN ──
+    const LoadingScreen = () => {
+      const [phase, setPhase] = useState(0); // 0=spinning, 1=text reveal, 2=subtitle
+      useEffect(()=>{
+        const t1 = setTimeout(()=>setPhase(1), 1200);
+        const t2 = setTimeout(()=>setPhase(2), 2000);
+        return ()=>{clearTimeout(t1);clearTimeout(t2);};
+      },[]);
+      return (
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100dvh",background:"#fff",gap:16,overflow:"hidden"}}>
+          {/* Spinning Chonk Head */}
+          <div style={{animation:"chonkSpin 1.2s cubic-bezier(.4,0,.2,1) infinite",willChange:"transform"}}>
+            <ChonkHead size={100}/>
+          </div>
+          {/* Title text */}
+          <div style={{textAlign:"center",overflow:"hidden"}}>
+            <div style={{fontSize:22,fontWeight:700,letterSpacing:4,fontFamily:"'Space Mono',monospace",opacity:phase>=1?1:0,animation:phase>=1?"textReveal .5s cubic-bezier(.34,1.56,.64,1) forwards":"none"}}>
+              CHONKAGOTCHI
+            </div>
+            {phase>=2&&(
+              <div style={{fontSize:11,fontWeight:700,letterSpacing:3,color:C.teal,marginTop:8,animation:"textReveal .4s cubic-bezier(.34,1.56,.64,1) forwards, textGlow 2s ease infinite"}}>
+                LET'S F*CKING CHONK!
+              </div>
+            )}
+          </div>
+          {/* Loading dots */}
+          <div style={{display:"flex",gap:6,marginTop:4}}>
+            {[0,1,2].map(i=><div key={i} style={{width:6,height:6,background:C.text,animation:`dotBounce .6s ${i*.15}s ease infinite`}}/>)}
+          </div>
+        </div>
+      );
+    };
 
     const clamp = (v,lo=0,hi=100) => Math.max(lo,Math.min(hi,v));
 
@@ -354,7 +420,7 @@
       const sc=1+Math.sin(frame*.12)*.015;
       const currentImg = chonkImg || PRESETS[presetIdx];
 
-      if(!loaded) return <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",height:"100dvh"}}><div style={{fontSize:24,fontWeight:700,letterSpacing:4}}>CHONKAGOTCHI</div><div style={{color:C.muted,fontSize:12,marginTop:8,animation:"pulse 1.5s infinite"}}>Loading...</div></div>;
+      if(!loaded) return <LoadingScreen />;
 
       // ── SETUP SCREEN ──
       if(screen==="setup") return (
